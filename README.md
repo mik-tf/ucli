@@ -16,7 +16,7 @@
 
 ## Introduction
 
-`ucli` is a bash script designed to simplify the process of building tools from GitHub repositories. It provides an interactive menu and command-line interface. It requires `git` and `make` to be installed on the system.
+`ucli` is a bash script designed for Ubuntu to simplify the process of building tools from GitHub repositories. It provides an interactive menu and command-line interface. It requires `git` to be installed on the system.
 
 ## Features
 
@@ -40,7 +40,7 @@ cd ..
 rm -r ucli
 ```
 
-This will copy the script to `/usr/local/bin` and make it executable. You can then run it from anywhere in your system.
+This will copy the script to `/usr/local/bin`, make it executable then delete the downloaded files. You can then run it from anywhere in your system.
 
 ## Usage
 
@@ -54,8 +54,11 @@ Run `ucli` without any arguments to enter the interactive mode. You will be pres
 `ucli` supports several command-line options:
 
 * `ucli install`: Installs `ucli` to `/usr/local/bin`.
+* `ucli uninstall`: Uninstalls `ucli` from `/usr/local/bin`.
 * `ucli login`: Logs in to your GitHub organization, storing the organization name in the `ORG` environment variable.
 * `ucli logout`: Logs out of your GitHub organization, removing the `ORG` environment variable.
+* `ucli list`: List the public repos of the organization.
+* `ucli help`: Shows the help function.
 * `ucli repo <repo_name>`: Clones the specified repository (e.g., `my-org/my-tool`), runs `make`, and cleans up. Requires being logged in first (`ucli login`).
 
 
