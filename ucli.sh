@@ -5,9 +5,29 @@ RED=$(printf '\033[0;31m')
 GREEN=$(printf '\033[0;32m')
 YELLOW=$(printf '\033[0;33m')
 NC=$(printf '\033[0m')
+ENV_FILE="$HOME/.ucli_env"
+
+# Logging functions for consistent output formatting
+log() {
+    echo -e "${GREEN}[UPDATE]${NC} $1"
+    sleep 1
+}
+
+warn() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+    sleep 1
+}
+
+error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+    sleep 1
+    exit 1
+}
+
 
 # Help function
 show_help() {
+  log "Displaying help message"
   printf "\n${GREEN}UCLI - Universal Command Line Interface Tool${NC}\n\n"
   printf "Commands:\n"
   printf "  ${GREEN}install${NC}       Install ucli to /usr/local/bin\n"
@@ -28,17 +48,15 @@ show_help() {
 install() {
   if [[ ! -d "/usr/local/bin" ]]; then
     if sudo mkdir -p /usr/local/bin; then
-      printf "${GREEN}Directory /usr/local/bin created successfully.${NC}\n"
+      log "Directory /usr/local/bin created successfully."
     else
-      printf "${RED}Error creating directory /usr/local/bin.${NC}\n"
-      exit 1
+      error "Error creating directory /usr/local/bin."
     fi
   fi
   if sudo cp "$0" /usr/local/bin/ucli && sudo chmod +x /usr/local/bin/ucli; then
-    printf "${GREEN}ucli installed to /usr/local/bin.${NC}\n"
+      log "ucli installed to /usr/local/bin."
   else
-    printf "${RED}Error installing ucli.${NC}\n"
-    exit 1
+      error "Error installing ucli."
   fi
 }
 
@@ -46,110 +64,130 @@ install() {
 uninstall() {
   if [[ -f "/usr/local/bin/ucli" ]]; then
     if sudo rm /usr/local/bin/ucli; then
-      printf "${GREEN}ucli successfully uninstalled.${NC}\n"
+      log "ucli successfully uninstalled."
     else
-      printf "${RED}Error uninstalling ucli.${NC}\n"
-      exit 1
+      error "Error uninstalling ucli."
     fi
   else
-    printf "${YELLOW}ucli is not installed in /usr/local/bin.${NC}\n"
+    warn "ucli is not installed in /usr/local/bin."
   fi
 }
 
-# Function to handle login and store credentials in environment variables
+# Login
 login() {
-  until [[ -n "$ORG" ]]; do
-    read -r -p "User/Organization (required): " org
-    if [[ -z "$org" ]]; then
-      printf "${YELLOW}Organization name cannot be empty.${NC}\n"
+  if [[ -f "$ENV_FILE" ]]; then
+    # Try to read the ORG variable, handle potential errors
+    if read -r ORG < "$ENV_FILE" && [[ -n "$ORG" ]]; then
+      log "Already logged in as $ORG"
+      return 0
     else
-      export ORG="$org"
-      break
+      warn "Existing $ENV_FILE is corrupted.  Overwriting..."
+    fi
+  fi
+
+  while true; do
+    read -r -p "User/Organization (required): " ORG
+    if [[ -z "$ORG" ]]; then
+      warn "Organization name cannot be empty."
+    else
+      # Use printf to ensure proper file writing, even with special characters
+      printf "%s\n" "$ORG" > "$ENV_FILE"
+      log "Logged in as $ORG"
+      return 0
     fi
   done
-  printf "${GREEN}Logged in as ${YELLOW}$ORG${NC}\n"
 }
 
-# Function to handle logout and remove the ORG environment variable
-logout() {
-  if [[ -z "$ORG" ]]; then
-    printf "${YELLOW}You are not currently logged in.${NC}\n"
-    return 0
+# Check login
+check_login() {
+  if [[ ! -f "$ENV_FILE" ]]; then
+    warn "Please login first using 'ucli login'."
+    return 1
   fi
-  unset ORG
-  printf "${GREEN}Successfully logged out.${NC}\n"
+
+  if ! read -r ORG < "$ENV_FILE" || [[ -z "$ORG" ]]; then
+    warn "Error reading or invalid organization in $ENV_FILE. Please login again."
+    rm -f "$ENV_FILE" # Remove the corrupted file
+    return 1
+  fi
+  return 0
+}
+
+# Logout function
+logout() {
+  if [[ -f "$ENV_FILE" ]]; then
+    rm "$ENV_FILE"
+    log "Successfully logged out."
+  else
+    warn "You are not currently logged in."
+  fi
 }
 
 # Function to list repositories
 list_repos() {
-  if [[ -z "$ORG" ]]; then
-    printf "${RED}Please login first using 'ucli login'.${NC}\n"
+  if ! check_login; then
     return 1
   fi
 
   if ! command -v curl &> /dev/null; then
-    printf "${RED}Error: curl is required but not installed.${NC}\n"
-    exit 1
+    error "curl is required but not installed."
   fi
 
-  printf "\n${YELLOW}Fetching repositories for ${ORG}...${NC}\n\n"
-  local repos=$(curl -s "https://api.github.com/users/${ORG}/repos" | 
-                grep '"name":' | 
+  log "Fetching repositories for $ORG..."
+  local repos=$(curl -s "https://api.github.com/users/${ORG}/repos" |
+                grep '"name":' |
                 sed -E 's/.*"name": "([^"]+)".*/\1/' |
                 grep -v "Apache License 2.0" |
                 sort)
-  
+
   if [[ -z "$repos" ]]; then
-    printf "${RED}Error: Failed to fetch repository data${NC}\n"
+    warn "Failed to fetch repository data"
     read -n 1 -s -r -p "Press ENTER to return to main menu..."
     return 1
   fi
 
   echo "$repos"
-  printf "\n${YELLOW}Press ENTER to return to main menu...${NC}"
+  log "Repository list displayed"
+  log "Press ENTER to return to main menu..."
   read -r
 }
 
+# Function to fetch and run
 fetch_and_run() {
-  local org="$ORG"
-  local repo="$1"
-  local tmpdir="/tmp/code/github.com/$org/$repo"
-  local original_dir=$(pwd)
-
-  if [[ -z "$org" ]]; then
-    printf "${RED}Please login first using 'ucli login'.${NC}\n"
+  if ! check_login; then
     return 1
   fi
 
+  local repo="$1"
+  local org="$ORG"
+  local tmpdir="/tmp/ucli/$org/$repo"
+  local original_dir=$(pwd)
+
   if ! mkdir -p "$tmpdir"; then
-    printf "${RED}Error creating temporary directory $tmpdir: $?${NC}\n"
-    exit 1
+    error "Error creating temporary directory $tmpdir"
   fi
 
-  printf "${YELLOW}Cloning repository...${NC}\n"
-  cd "$original_dir"
+  log "Cloning repository ${org}/${repo}..."
+  cd "$original_dir" || error "Error changing to original directory"
+
   if ! git clone --depth 1 "https://github.com/$org/$repo.git" "$tmpdir"; then
-    printf "${RED}Error cloning repository $repo: $?${NC}\n"
-    rm -rf "$tmpdir"
-    exit 1
+    error "Error cloning repository ${org}/${repo}"
   fi
 
-  cd "$tmpdir" || { printf "${RED}Error changing to directory $tmpdir: $?${NC}\n"; exit 1; }
+  cd "$tmpdir" || { error "Error changing to directory $tmpdir"; }
 
-  printf "${YELLOW}Running make...${NC}\n"
+  log "Running make..."
   if ! make; then
-    printf "${RED}Error executing Makefile in $repo: $?${NC}\n"
-    rm -rf "$tmpdir"
-    exit 1
+    error "Error executing Makefile in $repo"
   fi
 
-  printf "${GREEN}Build successful!${NC}\n"
-  sleep 2 # Added 2-second sleep
+  log "Build successful!"
   rm -rf "$tmpdir"
-  cd "$original_dir"
+  cd "$original_dir" || error "Error returning to original directory"
 }
 
-# Main interactive loop or command-line execution
+
+# Main function
 main() {
   if [[ -z "$1" ]]; then # Interactive mode
     while true; do
@@ -186,7 +224,7 @@ main() {
       list) list_repos ;;
       build) fetch_and_run "$2" ;;
       help) show_help ;;
-      *) printf "${RED}Invalid command. Use 'ucli help' for usage information.${NC}\n"; exit 1 ;;
+      *) printf "${RED}Invalid command. Use 'ucli help' for usage information.\n${NC}"; exit 1 ;;
     esac
   fi
 }
