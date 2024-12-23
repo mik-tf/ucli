@@ -78,7 +78,7 @@ ucli repo my-org/my-tool
 
 *   `bash` (should be present on most Unix-like systems)
 *   `git`
-*   `make`
+*   `make` (optional)
 
 To download the prerequisites on Debian/Ubuntu systems:
 
