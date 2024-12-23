@@ -24,6 +24,10 @@ error() {
     exit 1
 }
 
+# Function to check if a string is a valid repository name (alphanumeric and hyphens)
+is_valid_repo_name() {
+  [[ "$1" =~ ^[a-zA-Z0-9-]+$ ]]
+}
 
 # Help function
 show_help() {
@@ -35,10 +39,10 @@ show_help() {
   printf "  ${GREEN}login${NC}         Set GitHub organization\n"
   printf "  ${GREEN}logout${NC}        Unset GitHub organization\n"
   printf "  ${GREEN}list${NC}          List organization repositories\n"
-  printf "  ${GREEN}build <name>${NC}  Build a tool from GitHub repository\n"
+  printf "  ${GREEN}build <repo1> [repo2] ...  Build tools from specified GitHub repositories\n"
   printf "  ${GREEN}help${NC}          Show this help message\n\n"
   printf "${YELLOW}Interactive mode: Run 'ucli' without arguments\n\n${NC}"
-  printf "Version: 0.0.1\n"
+  printf "Version: 0.1.0\n"
   printf "License: Apache 2.0\n"
   printf "Repository: https://github.com/mik-tf/ucli\n\n"
   read -r -p "${YELLOW}Press ENTER to return to main menu (interactive mode) or exit (command-line mode)...${NC}"
@@ -152,38 +156,45 @@ list_repos() {
   read -r
 }
 
-# Function to fetch and run
+# Function to fetch and run (modified to handle multiple repos)
 fetch_and_run() {
   if ! check_login; then
     return 1
   fi
 
-  local repo="$1"
-  local org="$ORG"
-  local tmpdir="/tmp/ucli/$org/$repo"
-  local original_dir=$(pwd)
+  for repo in "$@"; do
+    if ! is_valid_repo_name "$repo"; then
+      error "Invalid repository name: $repo. Only alphanumeric characters and hyphens are allowed."
+    fi
 
-  if ! mkdir -p "$tmpdir"; then
-    error "Error creating temporary directory $tmpdir"
-  fi
+    local org="$ORG"
+    local tmpdir="/tmp/ucli/$org/$repo"
+    local original_dir=$(pwd)
 
-  log "Cloning repository ${org}/${repo}..."
-  cd "$original_dir" || error "Error changing to original directory"
+    if ! mkdir -p "$tmpdir"; then
+      error "Error creating temporary directory $tmpdir"
+    fi
 
-  if ! git clone --depth 1 "https://github.com/$org/$repo.git" "$tmpdir"; then
-    error "Error cloning repository ${org}/${repo}"
-  fi
+    log "Cloning repository ${org}/${repo}..."
+    cd "$original_dir" || error "Error changing to original directory"
 
-  cd "$tmpdir" || { error "Error changing to directory $tmpdir"; }
+    if ! git clone --depth 1 "https://github.com/$org/$repo.git" "$tmpdir"; then
+      warn "Error cloning repository ${org}/${repo}. Skipping..."
+      continue # Skip to the next repository if cloning fails
+    fi
 
-  log "Running make..."
-  if ! make; then
-    error "Error executing Makefile in $repo"
-  fi
+    cd "$tmpdir" || { error "Error changing to directory $tmpdir"; }
 
-  log "Build successful!"
-  rm -rf "$tmpdir"
-  cd "$original_dir" || error "Error returning to original directory"
+    log "Running make in $repo..."
+    if ! make; then
+      warn "Error executing Makefile in $repo. Skipping..."
+      continue # Skip to the next repository if make fails
+    fi
+
+    log "Build successful for $repo!"
+    rm -rf "$tmpdir"
+    cd "$original_dir" || error "Error returning to original directory"
+  done
 }
 
 
@@ -206,8 +217,8 @@ main() {
       case "$choice" in
         1|login) login ;;
         2|build)
-          read -r -p "Repository name: " repo
-          fetch_and_run "$repo" ;;
+          read -r -p "Repository names (space-separated): " repos
+          fetch_and_run $repos ;;
         3|list) list_repos ;;
         4|logout) logout ;;
         5|help) show_help ;;
@@ -222,7 +233,7 @@ main() {
       login) login ;;
       logout) logout ;;
       list) list_repos ;;
-      build) fetch_and_run "$2" ;;
+      build) fetch_and_run "$@" ;; # Pass all arguments to fetch_and_run
       help) show_help ;;
       *) printf "${RED}Invalid command. Use 'ucli help' for usage information.\n${NC}"; exit 1 ;;
     esac
