@@ -59,7 +59,7 @@ Run `ucli` without any arguments to enter the interactive mode. You will be pres
 * `ucli logout`: Logs out of your GitHub organization, removing the `ORG` environment variable.
 * `ucli list`: List the public repos of the organization.
 * `ucli help`: Shows the help function.
-* `ucli repo <repo_name>`: Clones the specified repository (e.g., `my-org/my-tool`), runs `make`, and cleans up. Requires being logged in first (`ucli login`).
+* `ucli build <repo_name>`: Clones the specified repository (e.g., `my-org/my-tool`), runs `make`, and cleans up. Requires being logged in first (`ucli login`). Can take many repos at once.
 
 
 **Example:** To build a tool from the repository `my-org/my-tool`, you would first log in:
