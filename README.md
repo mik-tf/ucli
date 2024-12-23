@@ -16,7 +16,7 @@
 
 ## Introduction
 
-`ucli` is a bash script designed to simplify the process of building tools from GitHub repositories. It provides an interactive menu and command-line interface for login, repository listing (currently a placeholder), and building tools.  It requires `git` and `make` to be installed on the system.
+`ucli` is a bash script designed to simplify the process of building tools from GitHub repositories. It provides an interactive menu and command-line interface. It requires `git` to be installed on the system.
 
 ## Features
 
@@ -51,7 +51,6 @@ Run `ucli` without any arguments to enter the interactive mode.  You will be pre
 
 * `ucli install`: Installs `ucli` to `/usr/local/bin`.
 * `ucli login`: Logs in to your GitHub organization, storing the organization name in an environment variable.
-* `ucli list`: Lists repositories from your GitHub organization (currently a placeholder; does not actually perform an API call).
 * `ucli repo <repo_name>`: Clones the specified repository, runs `make`, and (optionally) cleans up.  Requires being logged in first (`ucli login`).
 
 
