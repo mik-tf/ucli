@@ -63,6 +63,7 @@ fetch_and_run() {
 
   if [[ -z "$org" ]]; then
     printf "${RED}Please login first using 'ucli login'.${NC}\n"
+    sleep 1
     return 1
   fi
 
@@ -104,9 +105,9 @@ main() {
       clear
       printf "${GREEN}Welcome to UCLI, the Universal Command Line Interface Tool!${NC}\n\n"
       printf "${YELLOW}Select an option by entering its number:${NC}\n\n"
-      printf "  1. ${GREEN}Login to your GitHub organization${NC}\n"
+      printf "  1. ${GREEN}Set your GitHub organization${NC}\n"
       printf "  2. ${GREEN}Build a tool from a GitHub repository${NC}\n"
-      printf "  3. ${GREEN}Logout${NC}\n"
+      printf "  3. ${GREEN}Unset your GitHub organization${NC}\n"
       printf "  4. ${GREEN}Exit ucli${NC}\n\n"
 
       read -r -p "Enter your choice (1-4): " choice
@@ -118,7 +119,7 @@ main() {
           fetch_and_run "$repo" ;;
         3) logout ;;
         4) exit 0 ;;
-        *) printf "${RED}Invalid choice.${NC}\n"; sleep 1 ;; #Added pause for invalid choice
+        *) printf "${RED}Invalid choice.${NC}\n"; sleep 1 ;;
       esac
     done
   else # Command-line mode
