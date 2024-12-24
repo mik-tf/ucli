@@ -42,7 +42,6 @@ show_help() {
   printf "  ${GREEN}build repo1 repo2${NC}   Build tools from specified GitHub repositories\n"
   printf "  ${GREEN}help${NC}                Show this help message\n\n"
   printf "${YELLOW}Interactive mode: Run 'ucli' without arguments\n\n${NC}"
-  printf "Version: 0.1.0\n"
   printf "License: Apache 2.0\n"
   printf "Repository: https://github.com/mik-tf/ucli\n\n"
   read -r -p "${YELLOW}Press ENTER to return to main menu (interactive mode) or exit (command-line mode)...${NC}"
