@@ -126,33 +126,45 @@ logout() {
   fi
 }
 
+# Function to fetch repositories from GitHub API
+fetch_repos() {
+    if ! check_login; then
+        return 1
+    fi
+
+    if ! command -v curl &> /dev/null; then
+        error "curl is required but not installed."
+    fi
+
+    local repos=$(curl -s "https://api.github.com/users/${ORG}/repos" |
+                 grep '"name":' |
+                 sed -E 's/.*"name": "([^"]+)".*/\1/' |
+                 grep -v "Apache License 2.0" |
+                 sort)
+
+    if [[ -z "$repos" ]]; then
+        return 1
+    fi
+
+    echo "$repos"
+    return 0
+}
+
 # Function to list repositories
 list_repos() {
-  if ! check_login; then
-    return 1
-  fi
+    log "Fetching repositories for $ORG..."
+    local repos=$(fetch_repos)
+    
+    if [[ $? -ne 0 ]]; then
+        warn "Failed to fetch repository data"
+        read -n 1 -s -r -p "Press ENTER to return to main menu..."
+        return 1
+    fi
 
-  if ! command -v curl &> /dev/null; then
-    error "curl is required but not installed."
-  fi
-
-  log "Fetching repositories for $ORG..."
-  local repos=$(curl -s "https://api.github.com/users/${ORG}/repos" |
-                grep '"name":' |
-                sed -E 's/.*"name": "([^"]+)".*/\1/' |
-                grep -v "Apache License 2.0" |
-                sort)
-
-  if [[ -z "$repos" ]]; then
-    warn "Failed to fetch repository data"
-    read -n 1 -s -r -p "Press ENTER to return to main menu..."
-    return 1
-  fi
-
-  echo "$repos"
-  log "Repository list displayed"
-  log "Press ENTER to return to main menu..."
-  read -r
+    echo "$repos"
+    log "Repository list displayed"
+    log "Press ENTER to return to main menu..."
+    read -r
 }
 
 # Function to fetch and run (modified to handle multiple repos)
@@ -213,18 +225,10 @@ get_installed_tools() {
 
 # Update function
 update_tools() {
-    if ! check_login; then
-        return 1
-    fi
-
     log "Fetching repository list..."
-    local repos=$(curl -s "https://api.github.com/users/${ORG}/repos" |
-                 grep '"name":' |
-                 sed -E 's/.*"name": "([^"]+)".*/\1/' |
-                 grep -v "Apache License 2.0" |
-                 sort)
-
-    if [[ -z "$repos" ]]; then
+    local repos=$(fetch_repos)
+    
+    if [[ $? -ne 0 ]]; then
         error "Failed to fetch repository data"
     fi
 
