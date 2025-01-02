@@ -196,6 +196,59 @@ fetch_and_run() {
   done
 }
 
+# Function to check if a tool is installed
+is_tool_installed() {
+    local tool="$1"
+    [[ -f "/usr/local/bin/$tool" ]]
+}
+
+# Function to get installed tools
+get_installed_tools() {
+    local installed=()
+    for tool in /usr/local/bin/*; do
+        [[ -f "$tool" ]] && installed+=($(basename "$tool"))
+    done
+    echo "${installed[@]}"
+}
+
+# Update function
+update_tools() {
+    if ! check_login; then
+        return 1
+    fi
+
+    log "Fetching repository list..."
+    local repos=$(curl -s "https://api.github.com/users/${ORG}/repos" |
+                 grep '"name":' |
+                 sed -E 's/.*"name": "([^"]+)".*/\1/' |
+                 grep -v "Apache License 2.0" |
+                 sort)
+
+    if [[ -z "$repos" ]]; then
+        error "Failed to fetch repository data"
+    fi
+
+    local installed_tools=()
+    for repo in $repos; do
+        if is_tool_installed "$repo"; then
+            installed_tools+=("$repo")
+        fi
+    done
+
+    if [[ ${#installed_tools[@]} -eq 0 ]]; then
+        warn "No installed tools found to update"
+        return 0
+    fi
+
+    log "Found ${#installed_tools[@]} installed tools. Starting update..."
+    
+    for tool in "${installed_tools[@]}"; do
+        log "Updating $tool..."
+        fetch_and_run "$tool"
+    done
+
+    log "Update completed!"
+}
 
 # Main function
 main() {
@@ -209,7 +262,8 @@ main() {
       printf "  3. ${GREEN}list${NC}    - List organization repositories\n"
       printf "  4. ${GREEN}logout${NC}  - Unset your GitHub organization\n"
       printf "  5. ${GREEN}help${NC}    - Show help information\n"
-      printf "  6. ${GREEN}exit${NC}    - Exit ucli\n\n"
+      printf "  6. ${GREEN}update${NC}  - Update all installed tools\n"
+      printf "  7. ${GREEN}exit${NC}    - Exit ucli\n\n"
 
       read -r -p "Enter your choice: " choice
 
@@ -221,7 +275,8 @@ main() {
         3|list) list_repos ;;
         4|logout) logout ;;
         5|help) show_help ;;
-        6|exit) exit 0 ;;
+        6|update) update_tools ;;
+        7|exit) exit 0 ;;
         *) printf "${RED}Invalid choice. Try 'help' for more information.${NC}\n" ;;
       esac
     done
