@@ -137,8 +137,6 @@ cleanup() {
     fi
 }
 
-
-
 # Function to fetch repositories from GitHub API
 fetch_repos() {
     if ! check_login; then
@@ -161,6 +159,20 @@ fetch_repos() {
 
     echo "$repos"
     return 0
+}
+
+# Function to install prerequisites
+install_prerequisites() {
+    log "Installing prerequisites (make, git, curl)..."
+    if ! command -v apt &> /dev/null; then
+        error "This function only works on Debian/Ubuntu systems"
+    fi
+    
+    if sudo apt update && sudo apt install -y make git curl; then
+        log "Prerequisites installed successfully"
+    else
+        error "Failed to install prerequisites"
+    fi
 }
 
 # Function to list repositories
@@ -295,7 +307,8 @@ main() {
       printf "  4. ${GREEN}logout${NC}  - Unset your GitHub organization\n"
       printf "  5. ${GREEN}help${NC}    - Show help information\n"
       printf "  6. ${GREEN}update${NC}  - Update all installed tools\n"
-      printf "  7. ${GREEN}exit${NC}    - Exit ucli\n\n"
+      printf "  7. ${GREEN}prereq${NC}  - Install prerequisites (Ubuntu/Debian)\n"
+      printf "  8. ${GREEN}exit${NC}    - Exit ucli\n\n"
 
       read -r -p "Enter your choice: " choice
 
@@ -308,7 +321,8 @@ main() {
         4|logout) logout ;;
         5|help) show_help ;;
         6|update) update_tools ;;
-        7|exit) exit 0 ;;
+        7|prereq) install_prerequisites ;;
+        8|exit) exit 0 ;;
         *) printf "${RED}Invalid choice. Try 'help' for more information.${NC}\n" ;;
       esac
     done
