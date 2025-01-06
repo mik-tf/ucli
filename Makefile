@@ -1,11 +1,13 @@
+# Get the script name dynamically based on sole script in repo
+SCRIPT_NAME := $(wildcard *.sh)
+INSTALL_NAME := $(basename $(SCRIPT_NAME))
+
 build:
-	bash ucli.sh install
-	ucli
+	bash $(SCRIPT_NAME) install
 
 rebuild:
-	ucli uninstall
-	bash ucli.sh install
-	ucli
+	$(INSTALL_NAME) uninstall
+	bash $(SCRIPT_NAME) install
 	
 delete:
-	ucli uninstall
+	$(INSTALL_NAME) uninstall
