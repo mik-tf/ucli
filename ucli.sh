@@ -126,6 +126,19 @@ logout() {
   fi
 }
 
+# Function to clean up temporary directories
+cleanup() {
+    local tmpdir="$1"
+    if [[ -d "$tmpdir" ]]; then
+        rm -rf "$tmpdir"
+        if [[ $? -ne 0 ]]; then
+            warn "Failed to clean up $tmpdir. You may need to remove it manually."
+        fi
+    fi
+}
+
+
+
 # Function to fetch repositories from GitHub API
 fetch_repos() {
     if ! check_login; then
@@ -169,43 +182,58 @@ list_repos() {
 
 # Function to fetch and run (modified to handle multiple repos)
 fetch_and_run() {
-  if ! check_login; then
-    return 1
-  fi
-
-  for repo in "$@"; do
-    if ! is_valid_repo_name "$repo"; then
-      error "Invalid repository name: $repo. Only alphanumeric characters and hyphens are allowed."
+    if ! check_login; then
+        return 1
     fi
 
-    local org="$ORG"
-    local tmpdir="/tmp/ucli/$org/$repo"
     local original_dir=$(pwd)
+    local org="$ORG"
+    local tmpdir="/tmp/ucli/$org"
+
+    # Set trap for cleanup
+    trap 'cleanup "$tmpdir"' EXIT
+
+    # Clean up existing temporary directory if it exists
+    if [[ -d "$tmpdir" ]]; then
+        cleanup "$tmpdir"
+    fi
 
     if ! mkdir -p "$tmpdir"; then
-      error "Error creating temporary directory $tmpdir"
+        error "Error creating temporary directory $tmpdir"
     fi
 
-    log "Cloning repository ${org}/${repo}..."
-    cd "$original_dir" || error "Error changing to original directory"
+    for repo in "$@"; do
+        if ! is_valid_repo_name "$repo"; then
+            error "Invalid repository name: $repo. Only alphanumeric characters and hyphens are allowed."
+        fi
 
-    if ! git clone --depth 1 "https://github.com/$org/$repo.git" "$tmpdir"; then
-      warn "Error cloning repository ${org}/${repo}. Skipping..."
-      continue # Skip to the next repository if cloning fails
-    fi
+        log "Cloning repository ${org}/${repo}..."
+        cd "$original_dir" || error "Error changing to original directory"
 
-    cd "$tmpdir" || { error "Error changing to directory $tmpdir"; }
+        if ! git clone --depth 1 "https://github.com/$org/$repo.git" "$tmpdir/$repo"; then
+            warn "Error cloning repository ${org}/${repo}. Skipping..."
+            continue
+        fi
 
-    log "Running make in $repo..."
-    if ! make; then
-      warn "Error executing Makefile in $repo. Skipping..."
-      continue # Skip to the next repository if make fails
-    fi
+        cd "$tmpdir/$repo" || {
+            error "Error changing to directory $tmpdir/$repo"
+        }
 
-    log "Build successful for $repo!"
-    rm -rf "$tmpdir"
+        log "Running make in $repo..."
+        if ! make; then
+            warn "Error executing Makefile in $repo. Skipping..."
+            continue
+        fi
+
+        log "Build successful for $repo!"
+    done
+
+    # Clean up at the end
     cd "$original_dir" || error "Error returning to original directory"
-  done
+    cleanup "$tmpdir"
+
+    # Remove trap
+    trap - EXIT
 }
 
 # Function to check if a tool is installed
