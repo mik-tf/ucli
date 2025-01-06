@@ -33,11 +33,9 @@
 To install `ucli`, run the following command:
 
 ```bash
-git clone https://github.com/mik-tf/ucli
-cd ucli
+wget https://raw.githubusercontent.com/mik-tf/ucli/main/ucli.sh
 bash ./ucli.sh install
-cd ..
-rm -r ucli
+rm ./ucli.sh
 ```
 
 This will copy the script to `/usr/local/bin`, make it executable then delete the downloaded files. You can then run it from anywhere in your system.
