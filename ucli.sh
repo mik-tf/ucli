@@ -167,8 +167,8 @@ install_prerequisites() {
     if ! command -v apt &> /dev/null; then
         error "This function only works on Debian/Ubuntu systems"
     fi
-    
-    if sudo apt update && sudo apt install -y make git curl; then
+
+    if sudo apt update && sudo apt install -y make git curl file tree; then
         log "Prerequisites installed successfully"
     else
         error "Failed to install prerequisites"
@@ -179,7 +179,7 @@ install_prerequisites() {
 list_repos() {
     log "Fetching repositories for $ORG..."
     local repos=$(fetch_repos)
-    
+
     if [[ $? -ne 0 ]]; then
         warn "Failed to fetch repository data"
         read -n 1 -s -r -p "Press ENTER to return to main menu..."
@@ -267,7 +267,7 @@ get_installed_tools() {
 update_tools() {
     log "Fetching repository list..."
     local repos=$(fetch_repos)
-    
+
     if [[ $? -ne 0 ]]; then
         error "Failed to fetch repository data"
     fi
@@ -285,7 +285,7 @@ update_tools() {
     fi
 
     log "Found ${#installed_tools[@]} installed tools. Starting update..."
-    
+
     for tool in "${installed_tools[@]}"; do
         log "Updating $tool..."
         fetch_and_run "$tool"
