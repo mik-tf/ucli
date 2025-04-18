@@ -163,7 +163,7 @@ fetch_repos() {
 
 # Function to install prerequisites
 install_prerequisites() {
-    log "Installing prerequisites (make, git, curl)..."
+    log "Installing prerequisites..."
     if ! command -v apt &> /dev/null; then
         error "This function only works on Debian/Ubuntu systems"
     fi
